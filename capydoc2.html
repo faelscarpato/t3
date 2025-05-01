@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CapyDoc Analystic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+         body {
+             font-family: 'Open Sans', sans-serif;
+         }
+
+        .error-message {
+            color: #991b1b;
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .info-message {
+            color: #166534;
+            background-color: #dcfce7;
+            border: 1px solid #22c55e;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .main-content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        #chatOutput h2 {
+             @apply text-lg font-semibold mb-2 text-gray-700 mt-4 border-b pb-1 border-gray-300;
+        }
+         #chatOutput ul {
+             @apply list-disc list-inside space-y-1 text-sm text-gray-600 mb-3 pl-4;
+        }
+         #chatOutput p {
+            @apply text-sm text-gray-600 mb-2;
+         }
+         #chatOutput strong, #chatOutput b {
+            @apply font-semibold text-gray-800;
+         }
+         #chatOutputContainer {
+             @apply border border-gray-300 rounded-lg p-4 bg-white shadow-md;
+             min-height: 200px;
+             display: flex;
+             flex-direction: column;
+             overflow-y: auto;
+             flex-grow: 1;
+         }
+
+         .purple-bg {
+             background-color: #6b46c1;
+         }
+
+         .purple-text {
+             color: #6b46c1;
+         }
+
+         .purple-border {
+             border-color: #6b46c1;
+         }
+
+         .teal-text {
+             color: #319795;
+         }
+
+         .gray-bg-light {
+             background-color: #f7fafc;
+         }
+
+         .gray-border {
+             border-color: #e2e8f0;
+         }
+
+         .shadow-custom {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+         }
+
+         .sidebar-title {
+             font-size: 1.5rem;
+             font-weight: 700;
+             margin-bottom: 1.25rem;
+             text-align: center;
+             color: #4a5568;
+         }
+
+         .form-label {
+             display: block;
+             font-size: 0.875rem;
+             font-weight: 600;
+             margin-bottom: 0.25rem;
+             color: #4a5568;
+         }
+
+         .form-input, .form-textarea {
+             width: 100%;
+             padding: 0.75rem;
+             border: 1px solid #e2e8f0;
+             border-radius: 0.375rem;
+             margin-bottom: 1rem;
+             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+         }
+
+         .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+         }
+
+         .btn-primary {
+            width: 100%;
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s ease-in-out;
+            text-align: center;
+            cursor: pointer;
+         }
+
+         .btn-primary:hover {
+            background-color: #553c9a;
+         }
+
+         .analysis-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #2d3748;
+         }
+
+         .export-button {
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s ease-in-out;
+            cursor: pointer;
+         }
+
+         .export-button:hover {
+             background-color: #553c9a;
+         }
+
+        .custom-file-input {
+            display: inline-block;
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        .custom-file-input:hover {
+            background-color: #553c9a;
+        }
+
+        .custom-file-input input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col h-screen">
+
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-gray-800">Status - 3º Turno</span>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="index.html" class="border-blue-500 text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ">Dashboard</a>
+                        <a href="Absenteismo_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Absenteísmo</a>
+                        <a href="Status_Maquina_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Status Máquinas</a>
+                        <a href="capydoc2.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">CapyDoc</a>
+                        <a href="analise-curriculo.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Análise Currículo</a>
+                    </div>
+                </div>
+                <div class="flex items-center sm:hidden">
+                    <button type="button" id="menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Abrir menu</span>
+                        <svg id="icon-hamburger" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        <svg id="icon-close" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="sidebarNav" class="sm:hidden fixed inset-y-0 left-0 transform -translate-x-full w-64 bg-white shadow-xl z-50 p-4">
+            <div class="flex justify-between items-center mb-4">
+                <span class="font-bold text-lg text-gray-800">Menu</span>
+                <button type="button" id="close-sidebar-button" class="p-2 text-gray-400 hover:text-gray-600"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="space-y-1">
+                 <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+                 <a href="Absenteismo_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Absenteísmo</a>
+                 <a href="Status_Maquinas_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Status Máquinas</a>
+                    <a href="capydoc2.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">CapyDoc</a>
+                    <a href="analise-curriculo.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Análise Currículo</a>
+            </div>
+        </div>
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    </header>
+    <div class="container mx-auto p-4 flex flex-1 overflow-hidden">
+        <div class="sidebar w-full md:w-1/3 bg-white p-5 rounded-lg shadow-md overflow-y-auto flex flex-col flex-shrink-0 mr-4">
+             <h1 class="sidebar-title">CapyDoc Analystic</h1>
+
+            <label for="apiKey" class="form-label">API Key (Gemini):</label>
+            <input type="password" id="apiKey" placeholder="Insira sua API key do Google AI" class="form-input focus:ring-purple-700 focus:border-purple-700"/>
+
+            <label for="fileInput" class="form-label">Carregar Documento: (txt, PDF ou docx)</label>
+             <label class="custom-file-input">
+                 Escolher Arquivo
+                 <input type="file" id="fileInput" accept=".pdf,.docx,.txt"/>
+             </label>
+             <span id="fileName" class="file-name">Nenhum arquivo escolhido</span>
+
+            <label for="textInput" class="form-label">Ou cole seu texto:</label>
+            <textarea id="textInput" rows="5" placeholder="Cole o conteúdo aqui..." class="form-textarea focus:ring-purple-700 focus:border-purple-700"></textarea>
+
+            <button onclick="analisarDocumento()" class="btn-primary">
+                Analisar Documento
+            </button>
+
+            <div id="statusMessage" class="mt-4"></div>
+
+             <div class="flex-grow"></div>
+        </div>
+
+        <div class="main-content-area w-full md:w-2/3 flex flex-col overflow-hidden">
+            <div class="analysis-results bg-white p-5 rounded-lg shadow-md mb-4 flex flex-col overflow-hidden flex-grow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="analysis-title mb-0">Resultado da Análise:</h3>
+                    <button onclick="exportarPDF()" class="export-button">
+                        Exportar PDF
+                    </button>
+                </div>
+                <div id="chatOutputContainer" class="flex-grow overflow-y-auto pr-2">
+                     <div id="chatOutputDiv">Aguardando análise...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+  // --- Lógica da Navegação Responsiva (Mantida) ---
+  const menuButtonNav = document.getElementById('menu-button');
+        const closeSidebarButtonNav = document.getElementById('close-sidebar-button');
+        const sidebarNav = document.getElementById('sidebarNav');
+        const sidebarOverlayNav = document.getElementById('sidebarOverlay');
+        const iconHamburgerNav = document.getElementById('icon-hamburger');
+        const iconCloseNav = document.getElementById('icon-close');
+        function openSidebarNav() { if(sidebarNav) sidebarNav.classList.remove('-translate-x-full'); if(sidebarNav) sidebarNav.classList.add('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.add('hidden'); if(iconCloseNav) iconCloseNav.classList.remove('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'true'); }
+        function closeSidebarNav() { if(sidebarNav) sidebarNav.classList.add('-translate-x-full'); if(sidebarNav) sidebarNav.classList.remove('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.remove('hidden'); if(iconCloseNav) iconCloseNav.classList.add('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'false'); }
+        if (menuButtonNav) menuButtonNav.addEventListener('click', () => { if (sidebarNav.classList.contains('-translate-x-full')) openSidebarNav(); else closeSidebarNav(); });
+        if (closeSidebarButtonNav) closeSidebarButtonNav.addEventListener('click', closeSidebarNav);
+        if (sidebarOverlayNav) sidebarOverlayNav.addEventListener('click', closeSidebarNav);
+
+
+        const fileInput = document.getElementById('fileInput');
+        const textInput = document.getElementById('textInput');
+        const chatOutputDiv = document.getElementById('chatOutputDiv');
+        const statusMessageDiv = document.getElementById('statusMessage');
+        const apiKeyInput = document.getElementById('apiKey');
+        const fileNameSpan = document.getElementById('fileName');
+
+        let currentDocumentText = "";
+
+        const warningIconSVG = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.031-1.742 3.031H4.42c-1.532 0-2.493-1.697-1.743-3.031l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm0-8a1 1 0 011 1v3a1 1 0 11-2 0V6a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>`;
+        const redFlagIconSVG = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 01-1-1V6zm7 1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
+            </svg>`;
+        const infoIconSVG = `
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>`;
+
+        function clearPreviousState(loadingMessage = 'Carregando...') {
+            statusMessageDiv.innerHTML = '';
+            chatOutputDiv.innerHTML = 'Aguardando análise...';
+            currentDocumentText = "";
+            fileNameSpan.textContent = 'Nenhum arquivo escolhido';
+        }
+
+        function showMessage(message, isError = false) {
+            statusMessageDiv.innerHTML = `
+                <div class="${isError ? 'error-message' : 'info-message'}">
+                    ${message}
+                </div>
+            `;
+        }
+
+        async function renderTXT(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = reader.result;
+                    currentDocumentText = text;
+                    resolve(text);
+                };
+                reader.onerror = function(e) {
+                    console.error("Erro ao ler TXT:", e);
+                    showMessage('Erro ao ler o arquivo TXT.', true);
+                    reject(e);
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        async function renderDOCX(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const arrayBuffer = reader.result;
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                        .then(textResult => {
+                            const text = textResult.value;
+                            currentDocumentText = text;
+                             resolve(text);
+                        })
+                        .catch(err => {
+                            console.error("Erro ao extrair texto do DOCX:", err);
+                            showMessage('Erro ao processar o arquivo DOCX.', true);
+                            reject(err);
+                        });
+                };
+                 reader.onerror = function(e) {
+                    console.error("Erro ao ler DOCX:", e);
+                    showMessage('Erro ao ler o arquivo DOCX.', true);
+                    reject(e);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function renderPDF(file) {
+            return new Promise(async (resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    let fullText = '';
+
+                    try {
+                        const loadingTask = pdfjsLib.getDocument({ data: data });
+                        const pdf = await loadingTask.promise;
+                        console.log('PDF carregado');
+
+                        const numPages = pdf.numPages;
+
+                        for (let i = 1; i <= numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n';
+                        }
+
+                        currentDocumentText = fullText;
+                        resolve(fullText);
+
+                    } catch (error) {
+                        console.error('Erro ao carregar/renderizar PDF:', error);
+                        showMessage(`Erro ao processar o PDF: ${error.message}`, true);
+                        reject(error);
+                    }
+                };
+
+                 reader.onerror = function(e) {
+                    console.error("Erro ao ler PDF:", e);
+                    showMessage('Erro ao ler o arquivo PDF.', true);
+                    reject(e);
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                 fileNameSpan.textContent = 'Nenhum arquivo escolhido';
+                 currentDocumentText = "";
+                 return;
+            }
+            clearPreviousState(`Carregando ${file.name}...`);
+            textInput.value = '';
+            fileNameSpan.textContent = file.name;
+            const fileType = file.type;
+            const fileName = file.name;
+            const extension = fileName.split('.').pop().toLowerCase();
+
+            try {
+                if (extension === 'pdf' || fileType === 'application/pdf') {
+                    await renderPDF(file);
+                } else if (extension === 'docx' || fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    await renderDOCX(file);
+                } else if (extension === 'txt' || fileType === 'text/plain') {
+                    await renderTXT(file);
+                } else {
+                    showMessage(`Tipo de arquivo não suportado: .${extension}`, true);
+                    fileNameSpan.textContent = 'Tipo de arquivo não suportado';
+                    return;
+                }
+                 showMessage(`Documento "${fileName}" carregado. Pronto para análise.`, false);
+            } catch (error) {
+                 console.error("Falha no carregamento do arquivo:", error);
+                 fileNameSpan.textContent = 'Erro ao carregar arquivo';
+            }
+        });
+
+        async function analisarDocumento() {
+            statusMessageDiv.innerHTML = '';
+            chatOutputDiv.innerHTML = 'Processando solicitação...';
+            const apiKey = apiKeyInput.value.trim();
+            const file = fileInput.files[0];
+            const pastedText = textInput.value.trim();
+            let documentTextToAnalyze = "";
+
+            if (currentDocumentText) {
+                 documentTextToAnalyze = currentDocumentText;
+                 showMessage('Analisando documento carregado...');
+            } else if (pastedText) {
+                documentTextToAnalyze = pastedText;
+                 showMessage('Analisando texto colado...');
+            } else {
+                showMessage('Por favor, carregue um arquivo ou cole um texto para analisar.', true);
+                 chatOutputDiv.innerHTML = 'Nenhum conteúdo para analisar.';
+                return;
+            }
+
+            if (!documentTextToAnalyze) {
+                 showMessage('Não foi possível obter texto para análise.', true);
+                 chatOutputDiv.innerHTML = 'Falha ao obter conteúdo.';
+                 return;
+            }
+             if (!apiKey) {
+                 showMessage('Por favor, insira sua API Key do Google AI para usar o Gemini.', true);
+                 chatOutputDiv.innerHTML = 'API Key necessária.';
+                 return;
+             }
+
+             chatOutputDiv.innerHTML = `<div class="flex items-center justify-center h-full"><svg class="animate-spin h-8 w-8 text-purple-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="ml-3">Analisando com Gemini...</span></div>`;
+             showMessage(`Análise com Gemini em andamento...`);
+
+             try {
+                 const analysisResultText = await sendToGeminiAPI(documentTextToAnalyze, apiKey);
+                 displayAIResults(analysisResultText);
+                 showMessage(`Análise concluída por Gemini.`, false);
+             } catch (error) {
+                 console.error(`Erro durante a análise com Gemini:`, error);
+                 showMessage(`Erro na análise com Gemini: ${error.message}`, true);
+                 chatOutputDiv.innerHTML = `<p class="text-red-600">Ocorreu um erro durante a análise: ${error.message}</p>`;
+             }
+        }
+
+        async function sendToGeminiAPI(text, apiKey) {
+            const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const prompt = `
+                **Tarefa:** Analise o texto fornecido, identifique seu tipo e forneça uma análise estruturada em formato Markdown.
+                **1. Identificação do Tipo de Documento:**
+                Primeiro, classifique o documento como um dos seguintes tipos:
+                - Currículo/CV
+                - Contrato de Aluguel
+                - Carta Formal
+                - Notificação
+                - Proposta Comercial
+                - Termo de Aceite
+                - Política de Privacidade
+                - Relatório Financeiro
+                - Documento Jurídico (genérico, se não for contrato de aluguel ou notificação específica)
+                - Outro (se não se encaixar nos anteriores)
+
+                Indique o tipo identificado claramente no início da resposta, por exemplo: "**Tipo de Documento:** Currículo/CV".
+
+                **2. Análise Estruturada (Baseada no Tipo):**
+                Depois de identificar o tipo, forneça a análise correspondente usando títulos Markdown (##) para cada seção principal (simulando "cards"):
+
+                * **Se for Currículo/CV:**
+                    * \`## Análise Geral e Adequação\` (Comente sobre a clareza, organização e adequação geral para uma vaga hipotética).
+                    * \`## Palavras-Chave e Habilidades\` (Liste as principais habilidades e palavras-chave relevantes encontradas).
+                    * \`## Pontos Fortes\` (Destaque os aspectos positivos).
+                    * \`## Pontos de Melhoria/Red Flags\` (Indique áreas que podem ser melhoradas ou que geram alerta, como falta de informação, inconsistências, etc.). Use ${warningIconSVG} para melhorias e ${redFlagIconSVG} para red flags.
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira melhorias ou adições que poderiam fortalecer o currículo). Use ${infoIconSVG} ou ${warningIconSVG}.
+
+                * **Se for Contrato de Aluguel ou Compra (ou Documento Jurídico similar):**
+                    * \`## Resumo das Principais Cláusulas\` (Descreva brevemente as cláusulas mais importantes: objeto, prazo, valor, rescisão, garantias).
+                    * \`## Análise de Cláusulas Relevantes\` (Comente sobre cláusulas específicas que merecem atenção).
+                    * \`## Possíveis Irregularidades ou Ambiguidade\` (Liste cláusulas que parecem confusas, abusivas, incompletas ou potencialmente ilegais). Use ${warningIconSVG}.
+                    * \`## Red Flags e Riscos\` (Identifique pontos críticos que representam riscos significativos ou possível má fé). Use ${redFlagIconSVG}.
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira alterações ou adições que poderiam melhorar o contrato).
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira alterações ou adições que poderiam melhorar o documento). Use ${infoIconSVG} ou ${warningIconSVG}.
+                    * \`## Pontos de Atenção\` (Destaque cláusulas que exigem atenção especial ou que podem ser complexas). Use ${warningIconSVG}.
+
+                * **Se for Carta Formal / Notificação / Proposta Comercial:**
+                    * \`## Objetivo Principal\` (Identifique o propósito central do documento).
+                    * \`## Clareza e Tom de Voz\` (Avalie se a comunicação é clara, objetiva e adequada ao propósito).
+                    * \`## Pontos Principais Abordados\` (Liste os argumentos, propostas ou notificações chave).
+                    * \`## Pontos de Atenção ou Próximos Passos\` (Sugira ações ou pontos que requerem cuidado). Use ${infoIconSVG} ou ${warningIconSVG}.
+
+                * **Se for Termo de Aceite / Política de Privacidade:**
+                    * \`## Escopo e Finalidade\` (Descreva o que o termo/política cobre).
+                    * \`## Principais Obrigações e Direitos\` (Liste as responsabilidades e direitos do usuário/cliente).
+                    * \`## Coleta e Uso de Dados (se aplicável)\` (Resuma como os dados são coletados e utilizados, especialmente em Políticas de Privacidade).
+                    * \`## Cláusulas Importantes ou de Risco\` (Destaque seções que limitam direitos, impõem obrigações significativas ou são complexas). Use ${warningIconSVG} ou ${redFlagIconSVG}.
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira melhorias ou adições que poderiam fortalecer o termo/política). Use ${infoIconSVG} ou ${warningIconSVG}.
+                    * \`## Pontos de Atenção\` (Destaque cláusulas que exigem atenção especial ou que podem ser complexas). Use ${warningIconSVG}.
+
+                 * **Se for Relatório Financeiro:**
+                    * \`## Período e Escopo\` (Identifique o período coberto e o tipo de relatório).
+                    * \`## Principais Indicadores e Resultados\` (Resuma os resultados financeiros chave apresentados).
+                    * \`## Tendências e Variações\` (Comente sobre tendências ou variações significativas observadas).
+                    * \`## Pontos de Atenção ou Inconsistências\` (Aponte dados que parecem incomuns, inconsistentes ou que requerem análise mais profunda). Use ${warningIconSVG}.
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira melhorias ou adições que poderiam fortalecer o relatório). Use ${infoIconSVG} ou ${warningIconSVG}.
+                    * \`## Pontos de Atenção\` (Destaque cláusulas que exigem atenção especial ou que podem ser complexas). Use ${warningIconSVG}.
+
+                * **Se for Outro:**
+                    * \`## Análise Geral\` (Forneça um resumo e uma análise geral adaptada ao conteúdo do documento).
+                    * \`## Pontos Chave\` (Liste os pontos mais relevantes).
+                    * \`## Observações\` (Adicione quaisquer comentários ou observações pertinentes).
+                    * \`## Sugestões de Alterações\` (Se aplicável, sugira melhorias ou adições que poderiam fortalecer o documento). Use ${infoIconSVG} ou ${warningIconSVG}.
+                    * \`## Pontos de Atenção\` (Destaque cláusulas que exigem atenção especial ou que podem ser complexas). Use ${warningIconSVG}.
+
+                **3. Formato da Resposta:**
+                Use **Markdown** para formatar a resposta:
+                - Use \`**Tipo de Documento:** [Tipo Identificado]\` no início.
+                - Use \`## Título da Seção\` para cada "card" de análise.
+                - Use listas (\`* \` ou \`- \`) para detalhar os pontos dentro de cada seção.
+                - Use negrito (\`**texto**\`) para destacar termos importantes.
+                - Seja conciso e direto ao ponto.
+                - Evite jargões técnicos desnecessários.
+                - Se necessário, forneça explicações simples para termos técnicos.
+                - Use emojis ou ícones para destacar pontos importantes, como ${warningIconSVG} para melhorias e ${redFlagIconSVG} para red flags.
+
+                **Texto para analisar:**
+                ---
+                ${text}
+                ---
+            `;
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.8,
+                            maxOutputTokens: 9000,
+                        },
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
+                        ]
+                    }),
+                });
+
+                if (!response.ok) {
+                    let errorMsg = `Erro da API: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorBody = await response.json();
+                        console.error("Erro da API Gemini:", errorBody);
+                        errorMsg += `. ${errorBody?.error?.message || ''}`;
+                    } catch (e) { }
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+                    const rawResultText = data.candidates[0].content.parts[0].text;
+                    console.log("Resposta formatada (Markdown) da API:", rawResultText);
+                    return rawResultText;
+                } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                     console.error("Prompt bloqueado pela API:", data.promptFeedback);
+                     throw new Error(`Conteúdo bloqueado pela API por motivo de segurança: ${data.promptFeedback.blockReason}`);
+                } else {
+                    console.error("Resposta inesperada da API Gemini:", data);
+                    throw new Error('Formato de resposta inesperado da API.');
+                }
+            } catch (error) {
+                console.error('Erro ao chamar a API Gemini:', error);
+                throw error;
+            }
+        }
+
+        function displayAIResults(markdownText) {
+            if (markdownText) {
+                try {
+                    if (typeof marked === 'undefined') {
+                        console.error('marked.js não está carregado.');
+                        chatOutputDiv.innerHTML = '<p class="text-red-600">Erro: Biblioteca de formatação não carregada.</p>';
+                        return;
+                    }
+                     chatOutputDiv.innerHTML = marked.parse(markdownText);
+                } catch (e) {
+                    console.error("Erro ao parsear Markdown:", e);
+                    chatOutputDiv.innerHTML = `<p class="text-red-600">Erro ao formatar a resposta. Exibindo texto bruto:</p><pre class="whitespace-pre-wrap">${markdownText}</pre>`;
+                }
+            } else {
+                chatOutputDiv.innerHTML = '<p class="text-gray-500">Não foi possível obter a análise.</p>';
+            }
+        }
+
+        async function exportarPDF() {
+    // Garanta que a biblioteca jsPDF esteja carregada antes de chamar esta função.
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+        console.error('Biblioteca jsPDF não encontrada!');
+        showMessage('Erro: Biblioteca jsPDF não carregada.', true);
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+
+    // Tente obter o elemento. Verifique se ele existe.
+    const chatOutputDiv = document.getElementById('chatOutputDiv'); // Supondo que 'chatOutputDiv' seja o ID
+    if (!chatOutputDiv) {
+        console.error('Elemento chatOutputDiv não encontrado!');
+        showMessage('Erro: Elemento de saída não encontrado.', true);
+        return;
+    }
+
+    const analysisText = chatOutputDiv.innerText; // Pega apenas o texto visível. Formatação (negrito, etc.) será perdida.
+
+    if (!analysisText || analysisText.trim() === '') {
+        showMessage('Nenhum resultado de análise para exportar.', true);
+        return;
+    }
+
+    showMessage('Gerando PDF...', false);
+
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4'); // p=portrait, mm=milimetros, a4=tamanho
+        const margin = 15;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const maxWidth = pageWidth - 2 * margin; // Largura útil para o texto
+        const lineHeight = 7; // Altura de cada linha em mm
+        const paragraphSpacing = 5; // Espaço extra após um parágrafo
+
+        let yOffset = margin; // Posição vertical inicial
+
+        // Fontes
+        const titleFontSize = 18;
+        const subtitleFontSize = 14;
+        const textFontSize = 12;
+        const dateFontSize = 10;
+
+        // Função auxiliar para verificar espaço e adicionar nova página se necessário
+        const checkSpaceAndMove = (heightNeeded = lineHeight) => {
+            if (yOffset + heightNeeded > pageHeight - margin) { // Verifica se cabe na página atual
+                pdf.addPage();
+                yOffset = margin; // Reseta a posição Y para a margem superior na nova página
+            }
+        };
+
+        // --- Início do Conteúdo do PDF ---
+
+        // Título principal
+        checkSpaceAndMove(titleFontSize / 2); // Aproximação da altura do título
+        pdf.setFontSize(titleFontSize);
+        pdf.setFont("helvetica", "bold"); // Ou outra fonte se preferir/precisar
+        pdf.text('Relatório de Análise de Documento', margin, yOffset);
+        yOffset += titleFontSize / 2 + 5; // Move para baixo após o título
+
+        // Data
+        checkSpaceAndMove(dateFontSize / 2);
+        pdf.setFontSize(dateFontSize);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100); // Cinza
+        pdf.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, margin, yOffset); // Formato pt-BR
+        pdf.setTextColor(0); // Preto de volta
+        yOffset += dateFontSize / 2 + 10;
+
+        // Subtítulo
+        checkSpaceAndMove(subtitleFontSize / 2);
+        pdf.setFontSize(subtitleFontSize);
+        pdf.setFont("helvetica", "bold");
+        pdf.text('Resultado da Análise:', margin, yOffset);
+        yOffset += subtitleFontSize / 2 + 5;
+
+        // Texto principal
+        pdf.setFontSize(textFontSize);
+        pdf.setFont("helvetica", "normal");
+
+        // --- Processamento dos Parágrafos ---
+        // !!! PONTO CRÍTICO: Verifique como seus parágrafos são realmente separados no HTML/innerText !!!
+
+        // Opção 1: Se separados por DUAS ou mais quebras de linha (linha em branco entre eles)
+        // const paragraphs = analysisText.split(/\n\s*\n/);
+
+        // Opção 2: Se separados por UMA ÚNICA quebra de linha
+        const paragraphs = analysisText.split('\n');
+
+        // Opção 3: Se precisar tratar múltiplos espaços/quebras de linha de forma mais robusta
+        // const paragraphs = analysisText.split(/\n+/).filter(p => p.trim() !== ''); // Divide por uma ou mais quebras de linha e remove vazios
+
+        paragraphs.forEach(paragraph => {
+            const trimmedParagraph = paragraph.trim();
+            if (!trimmedParagraph) return; // Ignorar parágrafos completamente vazios ou só com espaços
+
+            // Verifica espaço ANTES de tentar adicionar as linhas do parágrafo
+            // (Poderia ser mais inteligente para evitar órfãos/viúvas, mas é mais complexo)
+            const lines = pdf.splitTextToSize(trimmedParagraph, maxWidth); // Quebra o parágrafo em linhas
+
+            // Verifica se pelo menos a primeira linha cabe
+            checkSpaceAndMove(lineHeight);
+
+            lines.forEach((line, index) => {
+                // Verifica espaço ANTES de adicionar cada linha (redundante se já checou antes, mas seguro)
+                // Se não for a primeira linha do parágrafo, a checagem anterior já garantiu espaço.
+                if (index > 0) {
+                     checkSpaceAndMove(lineHeight);
+                }
+                 pdf.text(line, margin, yOffset); // Adiciona a linha ao PDF
+                 yOffset += lineHeight; // Move para a próxima linha
+            });
+
+            yOffset += paragraphSpacing; // Adiciona espaço extra após o parágrafo
+        });
+
+        // --- Fim do Conteúdo do PDF ---
+
+        pdf.save('relatorio_capydoc.pdf'); // Salva o arquivo
+        showMessage('PDF gerado com sucesso!', false);
+
+    } catch (error) {
+        console.error('Erro detalhado ao gerar PDF:', error); // Log completo no console
+        showMessage(`Erro ao gerar PDF: ${error.message}`, true); // Mensagem mais simples para o usuário
+    }
+}
+
+
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        fileNameSpan.textContent = file.name;
+    } else {
+        fileNameSpan.textContent = 'Nenhum arquivo escolhido';
+    }
+});
+    </script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#3b82f6" />
+  <title>Status Máquinas - 3º Turno</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+     /* Estilos gerais */
+     body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; margin: 0; }
+    /* Estilos para o painel lateral (sidebar) */
+    #sidebar { transition: transform 0.3s ease-in-out; }
+    #sidebarOverlay { transition: opacity 0.3s ease-in-out; }
+    /* Estilos para inputs e botões */
+    .form-input, .action-button { /* Renomeado de filter-input para form-input */
+        padding: 0.6rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem;
+        box-sizing: border-box; font-size: 0.875rem; width: 100%;
+        background-color: white; /* Garante fundo branco */
+    }
+    .action-button { background-color: #3b82f6; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; border: none; margin-right: 0.5rem; }
+    .action-button:last-child { margin-right: 0; }
+    .action-button:hover { background-color: #2563eb; }
+    .btn-add { background-color: #28a745; color: white; }
+    .btn-add:hover { background-color: #218838; }
+    .btn-update { background-color: #f59e0b; color: white; } /* Botão Salvar Alterações (Laranja) */
+    .btn-update:hover { background-color: #d97706; }
+    .btn-cancel-edit { background-color: #6b7280; color: white; } /* Botão Cancelar Edição (Cinza) */
+    .btn-cancel-edit:hover { background-color: #4b5563; }
+    .btn-generate { background-color: #10b981; color: white; }
+    .btn-generate:hover { background-color: #059669; }
+    .btn-load { background-color: #6366f1; } /* Botão Carregar (Roxo) */
+    .btn-load:hover { background-color: #4f46e5; }
+    .remove-button { background: none; border: none; color: #ef4444; cursor: pointer; padding: 0.25rem; font-weight: normal; text-decoration: underline; display: inline; }
+    .remove-button:hover { color: #991b1b; }
+    .edit-button { /* Estilo similar ao remover, mas azul */
+        background: none; border: none; color: #3b82f6; /* Azul */
+        cursor: pointer; padding: 0.25rem; font-weight: normal;
+        text-decoration: underline; display: inline; margin-right: 0.5rem; /* Espaço antes do remover */
+    }
+    .edit-button:hover { color: #2563eb; }
+
+    /* Estilos básicos para a tabela */
+    #tabela { border-collapse: separate; border-spacing: 0; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; width: 100%; margin-top: 1rem; /* Reduzido margin-top */ background-color: white; }
+    #tabela th, #tabela td { border-bottom: 1px solid #e5e7eb; padding: 0.75rem 1rem; text-align: center; vertical-align: middle; }
+    #tabela th { background-color: #f9fafb; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; white-space: nowrap; border-top: none; border-bottom-width: 2px; }
+    #tabela tbody tr:last-child td { border-bottom: none; }
+    #tabela tbody tr:hover td { background-color: #eff6ff; }
+    .preview { margin-top: 1rem; text-align: center; }
+    #linkDownload { display: none; margin-top: 1rem; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: #e0e7ff; color: #4338ca; text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s; }
+    #linkDownload:hover { background-color: #c7d2fe; }
+    #imagemTabela canvas { max-width: 100%; height: auto; margin-top: 1rem; border-radius: 0.375rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+    /* Alerta Customizado */
+     #alertContainer { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 1050; width: max-content; max-width: 90%; }
+    .custom-alert { padding: 1rem; margin-bottom: 1rem; font-size: 0.875rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 0.5rem; }
+    .custom-alert-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .custom-alert-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .custom-alert-close-button { margin-left: auto; margin-right: -0.375rem; margin-top: -0.375rem; border-radius: 0.5rem; padding: 0.375rem; display: inline-flex; height: 2rem; width: 2rem; background: none; border: none; cursor: pointer; }
+    .custom-alert-close-button:focus { outline: 2px solid transparent; outline-offset: 2px; ring-offset-color: white; ring: 2px;}
+    .custom-alert-close-button-error { color: #f87171; } .custom-alert-close-button-error:hover { background-color: #fee2e2; } .custom-alert-close-button-error:focus { ring-color: #fca5a5; }
+    .custom-alert-close-button-success { color: #4ade80; } .custom-alert-close-button-success:hover { background-color: #dcfce7; } .custom-alert-close-button-success:focus { ring-color: #86efac; }
+
+    /* Loading Spinner */
+    #loadingSpinner { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 4px solid #f3f3f3; border-top: 4px solid #9E1921; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; z-index: 1001; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #tabela caption {
+  caption-side: top;
+  text-align: justify-center;
+  font-size: 1.5em;
+  font-weight: bold;
+  padding: 5px;
+  padding-bottom: 15px;
+  background-color: #9E1921;
+  color: #fff;
+}
+
+    /* Estilos de Impressão */
+    @media print { /* ... estilos de impressão mantidos e ajustados para nova coluna ... */
+         body { padding: 0; margin: 0; background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+         header, form, .preview, .remove-button, .edit-button, #filterSection, #tabela th:last-child, #tabela td:last-child { display: none !important; } /* Esconde filtro e botões de ação */
+         .main-container { box-shadow: none; border: none; padding: 1cm; margin: 0; max-width: 100%; border-radius: 0; }
+         h1 { display: block; margin-bottom: 1rem; font-size: 1.5rem; text-align: center; }
+         #tabela { border-radius: 0; border: none; font-size: 9pt; margin-top: 1rem;} /* Ajustado para font menor */
+         #tabela th, #tabela td { border: 1px solid #ddd; padding: 0.3rem 0.5rem; font-size: 8pt;} /* Ajustado para font menor */
+         #tabela th { background-color: #eee !important; color: #333 !important;}
+         #tabela tbody tr { page-break-inside: avoid; }
+     }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-gray-800">Status - 3º Turno</span>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="index.html" class="border-blue-500 text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ">Dashboard</a>
+                        <a href="Absenteismo_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Absenteísmo</a>
+                        <a href="Status_Maquina_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Status Máquinas</a>
+                        <a href="capydoc2.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">CapyDoc</a>
+                        <a href="analise-curriculo.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Análise Currículo</a>
+                    </div>
+                </div>
+                <div class="flex items-center sm:hidden">
+                    <button type="button" id="menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Abrir menu</span>
+                        <svg id="icon-hamburger" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        <svg id="icon-close" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="sidebarNav" class="sm:hidden fixed inset-y-0 left-0 transform -translate-x-full w-64 bg-white shadow-xl z-50 p-4">
+            <div class="flex justify-between items-center mb-4">
+                <span class="font-bold text-lg text-gray-800">Menu</span>
+                <button type="button" id="close-sidebar-button" class="p-2 text-gray-400 hover:text-gray-600"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="space-y-1">
+                 <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+                 <a href="Absenteismo_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Absenteísmo</a>
+                 <a href="Status_Maquinas_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Status Máquinas</a>
+                    <a href="capydoc2.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">CapyDoc</a>
+                    <a href="analise-curriculo.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Análise Currículo</a>
+            </div>
+        </div>
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    </header>
+
+    <div id="loadingSpinner"></div>
+    <div id="alertContainer"></div>
+
+    <div class="main-container mt-4 p-4 sm:p-6 lg:p-8">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">STATUS MÁQUINAS - 3º TURNO</h1>
+
+        <form id="formulario" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <input type="hidden" id="editingRecordId">
+            <div><label for="data" class="block text-sm font-medium text-gray-700 mb-1">Data</label><input type="date" id="data" required class="form-input shadow-sm"/></div>
+            <div><label for="maquina" class="block text-sm font-medium text-gray-700 mb-1">Máquina</label><input type="text" id="maquina" required class="form-input shadow-sm"/></div>
+            <div><label for="molde" class="block text-sm font-medium text-gray-700 mb-1">Molde</label><input type="text" id="molde" required class="form-input shadow-sm"/></div>
+            <div><label for="cicloPadrao" class="block text-sm font-medium text-gray-700 mb-1">Ciclo Padrão</label><input type="text" id="cicloPadrao" required class="form-input shadow-sm"/></div>
+            <div><label for="cicloAtual" class="block text-sm font-medium text-gray-700 mb-1">Ciclo Atual</label><input type="text" id="cicloAtual" required class="form-input shadow-sm"/></div>
+            <div class="sm:col-span-2"><label for="obs" class="block text-sm font-medium text-gray-700 mb-1">Observação</label><textarea id="obs" rows="2" class="form-input shadow-sm"></textarea></div>
+            <div id="formButtons" class="sm:col-span-2 flex flex-col sm:flex-row justify-center gap-3">
+                 <button type="submit" id="submitButton" class="action-button btn-add w-full sm:w-auto">Salvar Novo Status (3º T)</button>
+                 <button type="button" id="cancelEditButton" onclick="cancelEdit()" class="action-button btn-cancel-edit w-full sm:w-auto hidden">Cancelar Edição</button>
+            </div>
+        </form>
+
+        <div id="filterSection" class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-center justify-center gap-4">
+             <label for="filterDate" class="text-sm font-medium text-gray-700 whitespace-nowrap">Carregar Registros da Data:</label>
+             <input type="date" id="filterDate" class="form-input w-full sm:w-auto shadow-sm">
+             <button onclick="loadMachineStatusByDate()" class="action-button btn-load w-full sm:w-auto">Carregar Dados (3º T)</button>
+         </div>
+
+         <div id="captureArea" class="overflow-x-auto">
+            <div class="shadow-md rounded-lg border border-gray-200">
+                <table id="tabela" class="min-w-full bg-white !mt-0">
+                    <caption>STATUS MÁQUINAS - 3º TURNO</caption>
+                    <thead>
+                        <tr>
+                            <th>Data</th><th>Máquina</th><th>Molde</th>
+                            <th>Ciclo Padrão</th><th>Ciclo Atual</th><th>Observação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="machineStatusTableBody" class="divide-y divide-gray-200">
+                         <tr><td colspan="7" class="text-center py-4 text-gray-500">Selecione uma data e clique em "Carregar Dados".</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div><div class="preview mt-6 text-center">
+            <h3 class="text-lg font-medium text-gray-700 mb-2">Gerar Imagem da Tabela Atual</h3>
+            <button onclick="gerarImagem()" class="action-button btn-generate">Gerar Imagem</button>
+            <a id="linkDownload" download="status-maquinas.png">Baixar Imagem</a>
+            <div id="imagemTabela" class="mt-4 flex justify-center"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Lógica da Navegação Responsiva (Mantida) ---
+        const menuButtonNav = document.getElementById('menu-button');
+        const closeSidebarButtonNav = document.getElementById('close-sidebar-button');
+        const sidebarNav = document.getElementById('sidebarNav'); // Corrigido para sidebarNav
+        const sidebarOverlayNav = document.getElementById('sidebarOverlay');
+        const iconHamburgerNav = document.getElementById('icon-hamburger');
+        const iconCloseNav = document.getElementById('icon-close');
+        function openSidebarNav() { if(sidebarNav) sidebarNav.classList.remove('-translate-x-full'); if(sidebarNav) sidebarNav.classList.add('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.add('hidden'); if(iconCloseNav) iconCloseNav.classList.remove('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'true'); }
+        function closeSidebarNav() { if(sidebarNav) sidebarNav.classList.add('-translate-x-full'); if(sidebarNav) sidebarNav.classList.remove('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.remove('hidden'); if(iconCloseNav) iconCloseNav.classList.add('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'false'); }
+        if (menuButtonNav) menuButtonNav.addEventListener('click', () => { if (sidebarNav && sidebarNav.classList.contains('-translate-x-full')) openSidebarNav(); else closeSidebarNav(); }); // Adicionado verificação de existência
+        if (closeSidebarButtonNav) closeSidebarButtonNav.addEventListener('click', closeSidebarNav);
+        if (sidebarOverlayNav) sidebarOverlayNav.addEventListener('click', closeSidebarNav);
+
+
+        // --- Configuração do Supabase (Mantida) ---
+        const SUPABASE_URL = 'https://ranhhacbgyfpzrjdynnd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhbmhoYWNiZ3lmcHpyamR5bm5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5MDU4OTEsImV4cCI6MjA1OTQ4MTg5MX0.Ey-X4Tz8krKHSICnYdHdBaI3q5WcRgUVwA8jOhfMr7Y';
+        if (SUPABASE_URL.includes('SUA_SUPABASE_URL') || SUPABASE_ANON_KEY.includes('SUA_SUPABASE_ANON_KEY')) { console.error('Erro: Insira suas credenciais do Supabase!'); }
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- Referências aos Elementos do DOM (Mantidas) ---
+        const form = document.getElementById('formulario');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const filterDateInput = document.getElementById('filterDate');
+        const machineStatusTableBody = document.getElementById('machineStatusTableBody');
+        const editingRecordIdInput = document.getElementById('editingRecordId');
+        const submitButton = document.getElementById('submitButton');
+        const cancelEditButton = document.getElementById('cancelEditButton');
+        const dataInput = document.getElementById('data');
+        const maquinaInput = document.getElementById('maquina');
+        const moldeInput = document.getElementById('molde');
+        const cicloPadraoInput = document.getElementById('cicloPadrao');
+        const cicloAtualInput = document.getElementById('cicloAtual');
+        const obsInput = document.getElementById('obs');
+
+        // --- Funções Auxiliares (Mantidas) ---
+        function showLoading(isLoading) { if (loadingSpinner) { loadingSpinner.style.display = isLoading ? 'block' : 'none'; } }
+        function showCustomAlert(message, type = 'success') {
+             let alertContainer = document.getElementById('alertContainer');
+             if (!alertContainer) { console.warn("Criando container de alerta."); alertContainer = document.createElement('div'); alertContainer.id = 'alertContainer'; alertContainer.style.position = 'fixed'; alertContainer.style.top = '80px'; alertContainer.style.left = '50%'; alertContainer.style.transform = 'translateX(-50%)'; alertContainer.style.zIndex = '1050'; alertContainer.style.width = 'max-content'; alertContainer.style.maxWidth = '90%'; document.body.insertBefore(alertContainer, document.body.firstChild); }
+             const alertBox = document.createElement('div');
+             alertBox.className = `custom-alert ${type === 'error' ? 'custom-alert-error' : 'custom-alert-success'}`;
+             const alertText = document.createElement('span'); alertText.textContent = message;
+             const closeButton = document.createElement('button'); closeButton.innerHTML = '&times;';
+             closeButton.className = `custom-alert-close-button ${type === 'error' ? 'custom-alert-close-button-error' : 'custom-alert-close-button-success'}`;
+             closeButton.onclick = () => alertBox.remove(); alertBox.appendChild(alertText); alertBox.appendChild(closeButton); alertContainer.appendChild(alertBox);
+             setTimeout(() => { if (alertBox && alertBox.parentNode === alertContainer) { alertBox.remove(); } }, 5000);
+         }
+        function escapeHTML(str) { if (str === null || str === undefined) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+
+        // --- Lógica do Status Máquinas (Modificada para Tabela T3) ---
+
+        // --- Lógica do Status Máquinas (Modificada para Tabela T3) ---
+
+        async function loadMachineStatusByDate() {
+            const selectedDate = filterDateInput.value;
+            if (!selectedDate) { showCustomAlert("Selecione uma data.", "error"); return; }
+            showLoading(true);
+            machineStatusTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">Carregando (3º T)...</td></tr>';
+            try {
+                 const { data, error } = await supabaseClient
+                    .from('status_maquinas_t3')
+                    .select('*').eq('data', selectedDate).order('created_at', { ascending: true });
+                 if (error) throw error;
+                 machineStatusTableBody.innerHTML = '';
+                 if (data && data.length > 0) { data.forEach(record => addMachineRowToTable(record)); }
+                 else { machineStatusTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">Nenhum registro (3º T) para esta data.</td></tr>'; }
+            } catch (error) { console.error("Erro ao carregar status:", error); showCustomAlert(`Erro ao carregar: ${error.message}`, "error"); machineStatusTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Erro ao carregar.</td></tr>'; }
+            finally { showLoading(false); }
+         }
+
+         function addMachineRowToTable(record) {
+             if (!machineStatusTableBody) { console.error("Erro fatal: tbody não encontrado."); return; }
+             const linha = document.createElement('tr');
+             linha.setAttribute('data-id', record.id);
+             linha.innerHTML = `
+                 <td class="px-4 py-2 text-sm text-gray-700">${escapeHTML(record.data)}</td>
+                 <td class="px-4 py-2 text-sm text-gray-700">${escapeHTML(record.nome_maquina)}</td>
+                 <td class="px-4 py-2 text-sm text-gray-700">${escapeHTML(record.molde)}</td>
+                 <td class="px-4 py-2 text-sm text-gray-700">${escapeHTML(record.ciclo_padrao)}</td>
+                 <td class="px-4 py-2 text-sm text-gray-700">${escapeHTML(record.ciclo_atual)}</td>
+                 <td class="px-4 py-2 text-sm text-gray-700 break-words max-w-xs">${escapeHTML(record.observacoes || '')}</td>
+                 <td class="px-4 py-2 text-sm text-center whitespace-nowrap">
+                     <button onclick="editMachineStatus(this, '${record.id}')" class="edit-button">Editar</button>
+                     <button onclick="removeMachineStatus(this, '${record.id}')" class="remove-button">Remover</button>
+                 </td>
+             `;
+             machineStatusTableBody.appendChild(linha);
+         }
+
+        function editMachineStatus(buttonElement, recordId) {
+            console.log(`Iniciando edição para ID: ${recordId}`);
+            const row = buttonElement.closest('tr');
+            if (!row) { console.error("Não foi possível encontrar a linha para editar."); return; }
+
+            // Pega os dados das células da linha (cuidado com HTML escapado se houver)
+            // Usar textContent é geralmente seguro aqui
+            dataInput.value = row.cells[0].textContent;
+            maquinaInput.value = row.cells[1].textContent;
+            moldeInput.value = row.cells[2].textContent;
+            cicloPadraoInput.value = row.cells[3].textContent;
+            cicloAtualInput.value = row.cells[4].textContent;
+            obsInput.value = row.cells[5].textContent;
+
+            editingRecordIdInput.value = recordId; // Armazena o ID
+            submitButton.textContent = 'Salvar Alterações'; // Muda texto do botão
+            submitButton.classList.remove('btn-add');
+            submitButton.classList.add('btn-update');
+            cancelEditButton.classList.remove('hidden'); // Mostra botão cancelar
+            form.scrollIntoView({ behavior: 'smooth' });
+            console.log("Formulário preenchido para edição.");
+        }
+
+        function cancelEdit() {
+            form.reset(); // Limpa campos
+            editingRecordIdInput.value = ''; // Limpa ID
+            submitButton.textContent = 'Salvar Novo Status (3º T)'; // Restaura botão
+            submitButton.classList.remove('btn-update');
+            submitButton.classList.add('btn-add');
+            cancelEditButton.classList.add('hidden'); // Esconde cancelar
+            const today = new Date().toISOString().split('T')[0]; if(dataInput) dataInput.value = today; // Restaura data padrão
+            console.log("Edição cancelada.");
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const editingId = editingRecordIdInput.value;
+            if (editingId) { await updateMachineStatus(editingId); }
+            else { await insertNewMachineStatus(); }
+        }
+
+        async function insertNewMachineStatus() {
+            console.log("Iniciando insertNewMachineStatus...");
+            showLoading(true);
+            const data = dataInput.value; const maquina = maquinaInput.value; const molde = moldeInput.value;
+            const cicloPadrao = cicloPadraoInput.value; const cicloAtual = cicloAtualInput.value; const obs = obsInput.value;
+            if (!data || !maquina || !molde || !cicloPadrao || !cicloAtual) { showCustomAlert('Preencha os campos obrigatórios.', 'error'); showLoading(false); return; }
+            const newRecord = { data, nome_maquina: maquina, molde, ciclo_padrao: cicloPadrao, ciclo_atual: cicloAtual, observacoes: obs || null };
+            console.log("Inserindo:", newRecord);
+            try {
+                const { data: insertedData, error } = await supabaseClient
+                    .from('status_maquinas_t3')
+                    .insert([newRecord]).select().single();
+                if (error) { console.error("Erro Supabase Insert:", error); throw error; }
+                if (!insertedData) throw new Error("Falha ao obter dados inseridos.");
+                showCustomAlert('Novo status (3º T) salvo!', 'success');
+                // Adiciona na tabela visual APENAS se a data for a mesma do filtro
+                if (filterDateInput && insertedData.data === filterDateInput.value) {
+                    addMachineRowToTable(insertedData);
+                } else {
+                     console.log("Registro inserido, mas pertence a outra data ou filtro não definido.");
+                     // Opcional: pode dar um feedback diferente ou apenas salvar
+                     // showCustomAlert('Registro salvo. Recarregue a data correspondente para vê-lo.', 'success');
+                }
+                form.reset();
+                const today = new Date().toISOString().split('T')[0]; if(dataInput) dataInput.value = today;
+            } catch (error) { console.error('Erro ao inserir:', error); showCustomAlert(`Erro ao salvar: ${error.message}`, 'error'); }
+            finally { showLoading(false); }
+        }
+
+        async function updateMachineStatus(recordId) {
+             console.log(`Iniciando update para ID: ${recordId}`);
+             showLoading(true);
+             const updatedData = { data: dataInput.value, nome_maquina: maquinaInput.value, molde: moldeInput.value, ciclo_padrao: cicloPadraoInput.value, ciclo_atual: cicloAtualInput.value, observacoes: obsInput.value || null };
+             if (!updatedData.data || !updatedData.nome_maquina || !updatedData.molde || !updatedData.ciclo_padrao || !updatedData.ciclo_atual) { showCustomAlert('Preencha os campos obrigatórios.', 'error'); showLoading(false); return; }
+             console.log("Atualizando com:", updatedData);
+             try {
+                 const { error } = await supabaseClient
+                    .from('status_maquinas_t3')
+                    .update(updatedData).eq('id', recordId);
+                 if (error) { console.error("Erro Supabase Update:", error); throw error; }
+                 showCustomAlert('Registro (3º T) atualizado!', 'success');
+                 const rowToUpdate = machineStatusTableBody.querySelector(`tr[data-id='${recordId}']`);
+                 if (rowToUpdate) {
+                    // Atualiza as células da linha existente
+                    rowToUpdate.cells[0].textContent = escapeHTML(updatedData.data);
+                    rowToUpdate.cells[1].textContent = escapeHTML(updatedData.nome_maquina);
+                    rowToUpdate.cells[2].textContent = escapeHTML(updatedData.molde);
+                    rowToUpdate.cells[3].textContent = escapeHTML(updatedData.ciclo_padrao);
+                    rowToUpdate.cells[4].textContent = escapeHTML(updatedData.ciclo_atual);
+                    rowToUpdate.cells[5].textContent = escapeHTML(updatedData.observacoes || '');
+                    console.log("Linha atualizada na tabela visual.");
+                     // Verifica se a data foi alterada e se deve permanecer na tabela atual
+                     if (filterDateInput && updatedData.data !== filterDateInput.value) {
+                         rowToUpdate.remove(); // Remove se a data não corresponde mais ao filtro
+                         console.log("Registro atualizado e removido da visualização (data diferente).");
+                         showCustomAlert('Registro atualizado e movido para outra data.', 'success');
+                     }
+                 } else {
+                     console.warn(`Linha ${recordId} não encontrada para update visual. Recarregando dados...`);
+                     loadMachineStatusByDate(); // Recarrega para garantir consistência
+                 }
+                 cancelEdit(); // Sai do modo de edição
+             } catch (error) { console.error('Erro ao atualizar:', error); showCustomAlert(`Erro ao atualizar: ${error.message}`, 'error'); }
+             finally { showLoading(false); }
+        }
+
+
+        async function removeMachineStatus(buttonElement, recordId) {
+            if (!confirm('Remover este registro (3º Turno)?')) return;
+            showLoading(true);
+            console.log(`Removendo ID: ${recordId}`);
+            try {
+                const { error } = await supabaseClient
+                    .from('status_maquinas_t3')
+                    .delete().match({ id: recordId });
+                if (error) { console.error("Erro Supabase Delete:", error); throw error; }
+                showCustomAlert('Registro (3º T) removido!', 'success');
+                const rowToRemove = buttonElement.closest('tr'); if (rowToRemove) rowToRemove.remove();
+                if (machineStatusTableBody && machineStatusTableBody.rows.length === 0) { // Verifica se tbody existe
+                    machineStatusTableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-500">Nenhum registro (3º T) para esta data.</td></tr>';
+                }
+            } catch (error) { console.error('Erro ao remover:', error); showCustomAlert(`Erro ao remover: ${error.message}`, 'error'); }
+            finally { showLoading(false); }
+        }
+
+         
+        /** Função para gerar imagem da tabela */
+        function gerarImagem() {
+            const captureElement = document.getElementById("captureArea"); // Captura a div com título e tabela
+            const linkDownload = document.getElementById("linkDownload");
+            const imagemContainer = document.getElementById("imagemTabela");
+            const tabelaElement = captureElement.querySelector("#tabela");
+            if (!tabelaElement) { showCustomAlert("Erro: Tabela não encontrada.", "error"); return; }
+
+            
+            const actionsHeader = tabelaElement ? tabelaElement.querySelector("th:last-child") : null;
+            const actionsCells = tabelaElement ? tabelaElement.querySelectorAll("td:last-child") : [];
+
+            // Esconde ações
+            if (actionsHeader) actionsHeader.style.display = 'none';
+            actionsCells.forEach(cell => cell.style.display = 'none');
+
+            imagemContainer.innerHTML = '<p class="text-gray-500 text-sm">Gerando imagem...</p>';
+            linkDownload.style.display = 'none';
+
+            html2canvas(tabelaElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+            .then(canvas => {
+                imagemContainer.innerHTML = '';
+                canvas.classList.add('max-w-full', 'h-auto', 'rounded-md', 'shadow-md', 'border', 'border-gray-200');
+                imagemContainer.appendChild(canvas);
+                try { linkDownload.href = canvas.toDataURL('image/png'); linkDownload.style.display = 'inline-block'; }
+                catch (e) { console.error("Erro Data URL:", e); imagemContainer.innerHTML = '<p class="text-red-500 text-sm">Erro ao gerar imagem.</p>'; }
+            }).catch(error => {
+                console.error('Erro html2canvas:', error);
+                imagemContainer.innerHTML = '<p class="text-red-500 text-sm">Erro ao gerar imagem.</p>';
+            }).finally(() => {
+                 // Mostra a coluna de ações novamente
+                 if (actionsHeader) actionsHeader.style.display = '';
+                 actionsCells.forEach(cell => cell.style.display = '');
+            });
+        }
+        // --- Inicialização (Mantida) ---
+        document.addEventListener('DOMContentLoaded', () => {
+             const today = new Date().toISOString().split('T')[0];
+             if(filterDateInput) filterDateInput.value = today;
+             if(dataInput) dataInput.value = today;
+             // Verifica se machineStatusTableBody existe antes de chamar load
+             if(machineStatusTableBody) {
+                loadMachineStatusByDate();
+             } else {
+                 console.error("Não foi possível carregar dados iniciais: tbody não encontrado.");
+             }
+        });
+        if(form) form.addEventListener('submit', handleFormSubmit);
+
+    </script>
+</body>
+</html>

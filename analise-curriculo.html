@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>AI Recruit Pro - Recrutamento Inteligente</title>
+  <meta name="description" content="Webapp mobile para recrutamento inteligente com IA. Avalie, gerencie e visualize currículos e vagas com inteligência artificial.">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="../css/ai-recruit-pro.css">   
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+         body {
+             font-family: 'Open Sans', sans-serif;
+         }
+
+        .error-message {
+            color: #991b1b;
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .info-message {
+            color: #166534;
+            background-color: #dcfce7;
+            border: 1px solid #22c55e;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .main-content-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        #chatOutput h2 {
+             @apply text-lg font-semibold mb-2 text-gray-700 mt-4 border-b pb-1 border-gray-300;
+        }
+         #chatOutput ul {
+             @apply list-disc list-inside space-y-1 text-sm text-gray-600 mb-3 pl-4;
+        }
+         #chatOutput p {
+            @apply text-sm text-gray-600 mb-2;
+         }
+         #chatOutput strong, #chatOutput b {
+            @apply font-semibold text-gray-800;
+         }
+         #chatOutputContainer {
+             @apply border border-gray-300 rounded-lg p-4 bg-white shadow-md;
+             min-height: 200px;
+             display: flex;
+             flex-direction: column;
+             overflow-y: auto;
+             flex-grow: 1;
+         }
+
+         .purple-bg {
+             background-color: #6b46c1;
+         }
+
+         .purple-text {
+             color: #6b46c1;
+         }
+
+         .purple-border {
+             border-color: #6b46c1;
+         }
+
+         .teal-text {
+             color: #319795;
+         }
+
+         .gray-bg-light {
+             background-color: #f7fafc;
+         }
+
+         .gray-border {
+             border-color: #e2e8f0;
+         }
+
+         .shadow-custom {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+         }
+
+         .sidebar-title {
+             font-size: 1.5rem;
+             font-weight: 700;
+             margin-bottom: 1.25rem;
+             text-align: center;
+             color: #4a5568;
+         }
+
+         .form-label {
+             display: block;
+             font-size: 0.875rem;
+             font-weight: 600;
+             margin-bottom: 0.25rem;
+             color: #4a5568;
+         }
+
+         .form-input, .form-textarea {
+             width: 100%;
+             padding: 0.75rem;
+             border: 1px solid #e2e8f0;
+             border-radius: 0.375rem;
+             margin-bottom: 1rem;
+             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+         }
+
+         .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+         }
+
+         .btn-primary {
+            width: 100%;
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s ease-in-out;
+            text-align: center;
+            cursor: pointer;
+         }
+
+         .btn-primary:hover {
+            background-color: #553c9a;
+         }
+
+         .analysis-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #2d3748;
+         }
+
+         .export-button {
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s ease-in-out;
+            cursor: pointer;
+         }
+
+         .export-button:hover {
+             background-color: #553c9a;
+         }
+
+        .custom-file-input {
+            display: inline-block;
+            background-color: #6b46c1;
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        .custom-file-input:hover {
+            background-color: #553c9a;
+        }
+
+        .custom-file-input input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col h-screen">
+
+  <header class="bg-white shadow-md sticky top-0 z-40">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <span class="font-bold text-xl text-gray-800">Status - 3º Turno</span>
+                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <a href="index.html" class="border-blue-500 text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ">Dashboard</a>
+                    <a href="Absenteismo_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Absenteísmo</a>
+                    <a href="Status_Maquina_t3.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Status Máquinas</a>
+                    <a href="capydoc2.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">CapyDoc</a>
+                    <a href="analise-curriculo.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Análise Currículo</a>
+                </div>
+            </div>
+            <div class="flex items-center sm:hidden">
+                <button type="button" id="menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false">
+                    <span class="sr-only">Abrir menu</span>
+                    <svg id="icon-hamburger" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <svg id="icon-close" class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <div id="sidebarNav" class="sm:hidden fixed inset-y-0 left-0 transform -translate-x-full w-64 bg-white shadow-xl z-50 p-4">
+        <div class="flex justify-between items-center mb-4">
+            <span class="font-bold text-lg text-gray-800">Menu</span>
+            <button type="button" id="close-sidebar-button" class="p-2 text-gray-400 hover:text-gray-600"><svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div class="space-y-1">
+             <a href="index.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Dashboard</a>
+             <a href="Absenteismo_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Absenteísmo</a>
+             <a href="Status_Maquinas_T3.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Status Máquinas</a>
+                <a href="capydoc2.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">CapyDoc</a>
+                <a href="analise-curriculo.html" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">Análise Currículo</a>
+        </div>
+    </div>
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+</header>
+
+  <section class="mb-8 flex flex-col items-center text-center">
+    <div class="mb-3"> <i class="fas fa-brain fa-2x text-indigo-600"></i> </div>
+    <h1 class="text-3xl md:text-4xl font-bold text-indigo-700 tracking-tight mb-1">AI Recruit Pro</h1>
+    <p class="text-gray-600 text-lg md:text-xl">Recrutamento Inteligente Potencializado por IA</p>
+  </section>
+
+  <section class="dashboard-section no-print" id="configuracaoIA">
+    <div class="flex items-center mb-4">
+      <i class="fas fa-cog text-gray-500 mr-3 fa-lg"></i>
+      <h2 class="text-lg font-semibold text-gray-800">Configurações da IA</h2>
+    </div>
+    <form id="formConfigIA" class="space-y-4">
+      <div>
+        <label for="aiProviderSelect" class="block text-sm font-medium text-gray-700 mb-1">Provedor de IA</label>
+        <select id="aiProviderSelect" name="aiProvider" class="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="gemini">Google Gemini (generativelanguage API)</option>
+          <option value="openai">OpenAI (ChatGPT - gpt-3.5-turbo/gpt-4)</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="perplexity">Perplexity</option>
+          </select>
+      </div>
+      <div>
+        <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 mb-1">Sua Chave de API (API Key)</label>
+        <input type="password" id="apiKeyInput" name="apiKey" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Cole sua chave de API aqui" autocomplete="off">
+        <p class="text-xs text-gray-500 mt-1">A chave será salva apenas no seu navegador (<code class="text-xs">localStorage</code>).</p>
+      </div>
+      <div class="security-warning border-l-4 p-3 rounded-md">
+          <div class="flex items-center">
+              <div class="flex-shrink-0"> <i class="fas fa-exclamation-triangle text-yellow-500 fa-lg"></i> </div>
+              <div class="ml-3">
+                  <p class="text-sm font-medium">Aviso de Segurança</p>
+                  <p class="text-xs mt-1">Salvar chaves de API no navegador não é recomendado para ambientes de produção devido a riscos de segurança (XSS). Use por sua conta e risco.</p>
+              </div>
+          </div>
+      </div>
+      <div class="text-right">
+        <button type="submit" class="bg-gray-600 text-white px-5 py-2 rounded-md shadow hover:bg-gray-700 disabled:opacity-50 transition duration-150">
+          <i class="fas fa-save mr-1"></i>Salvar Configurações
+        </button>
+      </div>
+    </form>
+     <div id="configStatus" class="mt-3 text-sm font-medium" style="display: none;"></div>
+  </section>
+
+  <section class="dashboard-section" id="dashboard">
+    <div id="dashboard-loading" class="loading-overlay"><div class="spinner"></div></div>
+    <div class="flex items-center mb-4">
+      <i class="fas fa-chart-line text-indigo-500 mr-3 fa-lg"></i>
+      <h2 class="text-xl font-semibold text-gray-800">Visão Geral</h2>
+    </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4">
+      <div class="flex flex-col items-center p-4 bg-indigo-50 rounded-lg shadow-sm border border-indigo-100">
+        <i class="fas fa-briefcase text-indigo-500 text-3xl mb-2"></i>
+        <span class="text-2xl font-bold text-indigo-700" id="vagasCount">0</span>
+        <span class="text-sm text-gray-600 mt-1">Vagas Abertas</span>
+      </div>
+      <div class="flex flex-col items-center p-4 bg-green-50 rounded-lg shadow-sm border border-green-100">
+        <i class="fas fa-users text-green-500 text-3xl mb-2"></i>
+        <span class="text-2xl font-bold text-green-700" id="candidatosCount">0</span>
+        <span class="text-sm text-gray-600 mt-1">Candidatos</span>
+      </div>
+      <div class="flex flex-col items-center p-4 bg-yellow-50 rounded-lg shadow-sm border border-yellow-100">
+        <i class="fas fa-tasks text-yellow-600 text-3xl mb-2"></i>
+        <span class="text-2xl font-bold text-yellow-700" id="avaliacoesCount">0</span>
+        <span class="text-sm text-gray-600 mt-1">Avaliações</span>
+      </div>
+    </div>
+    <div class="w-full text-center mt-4 space-x-4">
+      <a href="#cadastroVaga" class="inline-block text-sm text-indigo-600 hover:underline no-print font-medium"> <i class="fas fa-plus-circle mr-1"></i>Nova Vaga </a>
+      <span class="text-gray-300">|</span>
+      <a href="#cadastroCandidato" class="inline-block text-sm text-green-600 hover:underline no-print font-medium"> <i class="fas fa-user-plus mr-1"></i>Novo Candidato </a>
+       <span class="text-gray-300">|</span>
+      <a href="#avaliacaoIA" class="inline-block text-sm text-blue-600 hover:underline no-print font-medium"> <i class="fas fa-search mr-1"></i>Avaliar Candidato </a>
+    </div>
+     <div id="dashboardError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <section class="dashboard-section" id="cadastroVaga">
+    <div id="vaga-loading" class="loading-overlay"><div class="spinner"></div></div>
+    <div class="flex items-center mb-5">
+      <i class="fas fa-briefcase text-indigo-500 mr-3 fa-lg"></i>
+      <h2 class="text-lg font-semibold text-gray-800">Gerenciar Vagas</h2>
+    </div>
+    <details class="mb-6 no-print bg-gray-50 p-4 rounded-lg border">
+        <summary class="font-semibold text-indigo-700 cursor-pointer hover:text-indigo-800">Adicionar/Editar Vaga</summary>
+        <form class="grid gap-4 md:grid-cols-2 mt-4" id="formVaga">
+          <input type="hidden" id="vagaEditingId"> <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="tituloVaga">Título da Vaga</label>
+            <input class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" type="text" id="tituloVaga" maxlength="100" required autocomplete="off">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="areaVaga">Área / Departamento</label>
+            <input class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" type="text" id="areaVaga" maxlength="100" required autocomplete="off">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="descricaoVaga">Descrição da Vaga</label>
+            <textarea class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" id="descricaoVaga" rows="3" required></textarea>
+            </div>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium mb-1 text-gray-700" for="requisitosVaga">Requisitos e Responsabilidades</label>
+          <textarea class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" id="requisitosVaga" rows="4"></textarea>
+           </div>
+    
+        <div class="md:col-span-2 text-right space-x-2">
+          <button type="button" onclick="resetFormVaga()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition duration-150">Cancelar Edição</button>
+          <button class="bg-indigo-600 text-white px-5 py-2 rounded-md shadow hover:bg-indigo-700 disabled:opacity-50 transition duration-150" type="submit" id="btnCadastrarVaga">
+            <i class="fas fa-save mr-1"></i>Salvar Vaga
+          </button>
+        </div>
+
+        </form>
+    </details>
+    <div>
+      <h3 class="font-semibold text-base mb-3 text-indigo-800">Vagas Atuais</h3>
+      <ul id="listaVagas" class="space-y-3 text-gray-700 text-sm">
+          <li class="text-gray-500 p-2 text-center">Carregando vagas...</li> </ul>
+    </div>
+     <div id="cadastroVagaError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <section class="dashboard-section" id="cadastroCandidato">
+     <div id="candidato-loading" class="loading-overlay"><div class="spinner"></div></div>
+    <div class="flex items-center mb-5">
+      <i class="fas fa-user-plus text-green-500 mr-3 fa-lg"></i>
+      <h2 class="text-lg font-semibold text-gray-800">Gerenciar Candidatos</h2>
+    </div>
+    <details class="mb-6 no-print bg-gray-50 p-4 rounded-lg border">
+        <summary class="font-semibold text-green-700 cursor-pointer hover:text-green-800">Adicionar/Editar Candidato</summary>
+        <form class="grid gap-4 md:grid-cols-2 mt-4" id="formCandidato">
+          <input type="hidden" id="candidatoEditingId"> <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="nomeCandidato">Nome Completo</label>
+            <input class="w-full border border-gray-300 rounded-md p-2 focus:ring-green-500 focus:border-green-500" type="text" id="nomeCandidato" maxlength="100" required autocomplete="name">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="emailCandidato">Email</label>
+            <input class="w-full border border-gray-300 rounded-md p-2 focus:ring-green-500 focus:border-green-500" type="email" id="emailCandidato" maxlength="100" required autocomplete="email">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="telefoneCandidato">Telefone (Opcional)</label>
+            <input class="w-full border border-gray-300 rounded-md p-2 focus:ring-green-500 focus:border-green-500" type="tel" id="telefoneCandidato" maxlength="20" autocomplete="tel">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700" for="arquivoCurriculo">Currículo (PDF/DOCX)</label>
+            <input class="w-full border border-gray-300 rounded-md p-1.5 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200" type="file" id="arquivoCurriculo" accept=".pdf,.doc,.docx">
+            <span class="text-xs text-gray-500 mt-1 block">Opcional. Se editando, envie apenas se quiser substituir o atual.</span>
+          </div>
+          <div class="md:col-span-2 text-right space-x-2">
+             <button type="button" onclick="resetFormCandidato()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition duration-150">Cancelar Edição</button>
+            <button class="bg-green-600 text-white px-5 py-2 rounded-md shadow hover:bg-green-700 disabled:opacity-50 transition duration-150" type="submit" id="btnCadastrarCandidato">
+              <i class="fas fa-user-check mr-1"></i>Salvar Candidato
+            </button>
+          </div>
+        </form>
+    </details>
+     <div>
+      <h3 class="font-semibold text-base mb-3 text-green-800">Candidatos Cadastrados</h3>
+      <ul id="listaCandidatos" class="space-y-3 text-gray-700 text-sm">
+          <li class="text-gray-500 p-2 text-center">Carregando candidatos...</li> </ul>
+    </div>
+     <div id="cadastroCandidatoError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <section class="dashboard-section" id="avaliacaoIA">
+    <div id="avaliacao-loading" class="loading-overlay"><div class="spinner"></div></div>
+    <div class="flex items-center mb-5">
+      <i class="fas fa-robot text-blue-500 mr-3 fa-lg"></i>
+      <h2 class="text-lg font-semibold text-gray-800">Avaliação de Compatibilidade por IA</h2>
+    </div>
+    <form class="grid gap-4 md:grid-cols-2 mb-6 pb-4 border-b border-gray-200" id="formAvaliacao">
+      <div>
+        <label class="block text-sm font-medium mb-1 text-gray-700" for="selectCandidato">Selecione o Candidato</label>
+        <select class="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-blue-500 focus:border-blue-500" id="selectCandidato" required>
+            <option value="" disabled selected>Carregando...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1 text-gray-700" for="selectVaga">Selecione a Vaga</label>
+        <select class="w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-blue-500 focus:border-blue-500" id="selectVaga" required>
+            <option value="" disabled selected>Carregando...</option>
+        </select>
+      </div>
+      <div class="md:col-span-2 text-center">
+        <button class="bg-blue-600 text-white px-6 py-2.5 rounded-md shadow hover:bg-blue-700 disabled:opacity-50 transition duration-150 text-base font-medium no-print" type="submit" id="btnAnalisarCurriculo">
+          <i class="fas fa-cogs mr-2"></i>Analisar com IA <span id="analiseProviderInfo" class="text-xs opacity-75"></span>
+        </button>
+         <p id="analiseConfigWarning" class="text-xs text-red-600 mt-2" style="display: none;">
+             <i class="fas fa-exclamation-triangle mr-1"></i>Configure seu Provedor e Chave de API na seção <a href="#configuracaoIA" class="underline hover:text-red-700">Configurações da IA</a>.
+         </p>
+      </div>
+    </form>
+    <div id="avaliacaoResultado" class="mt-6" style="display:none;">
+      <input type="hidden" id="currentAvaliacaoCandidatoId">
+      <input type="hidden" id="currentAvaliacaoVagaId">
+
+      <h3 class="text-lg font-bold text-blue-700 mb-4 text-center">Resultado da Análise (<span id="resultadoProvider"></span>)</h3>
+      <div class="flex flex-col md:flex-row md:items-start gap-6">
+        <div class="w-full md:w-1/3 flex flex-col items-center">
+          <div class="chart-container bg-blue-50 rounded-lg p-3 mb-3 border border-blue-100"> <canvas id="pontuacaoChart"></canvas> </div>
+          <span class="text-3xl font-bold text-blue-700 mb-1"> <span id="pontuacaoValor">--</span><span class="text-xl">/100</span> </span>
+          <span class="text-sm text-gray-600 font-medium">Pontuação Geral</span>
+        </div>
+        <div class="w-full md:w-2/3">
+          <div class="grid grid-cols-1 lg:grid-cols-1 gap-4">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 class="font-semibold text-green-800 mb-2 flex items-center"> <i class="fas fa-check-circle mr-2"></i> Pontos Fortes (Matches) </h4>
+                <ul class="list-disc text-green-900 ml-5 space-y-1 text-sm" id="combMatches"> <li class="text-gray-400 italic">Aguardando análise...</li> </ul>
+              </div>
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                 <h4 class="font-semibold text-red-800 mb-2 flex items-center"> <i class="fas fa-flag-checkered mr-2"></i> Pontos de Atenção (Red Flags) </h4>
+                <ul class="list-decimal text-red-900 ml-5 space-y-1 text-sm" id="redFlags"> <li class="text-gray-400 italic">Aguardando análise...</li> </ul>
+              </div>
+          </div>
+           <div class="mt-5 space-y-4">
+                <div class="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                  <h4 class="font-semibold text-gray-700 mb-1 flex items-center"><i class="fas fa-file-alt mr-2"></i>Resumo da Análise</h4>
+                  <div id="relatorioDetalhado" class="text-sm text-gray-800 whitespace-pre-wrap"></div>
+                </div>
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                  <h4 class="font-semibold text-indigo-700 mb-1 flex items-center"><i class="fas fa-lightbulb mr-2"></i>Sugestão da IA</h4>
+                  <div id="sugestaoAcao" class="text-indigo-900 text-sm font-medium"></div>
+                  </div>
+                <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <h4 class="font-semibold text-yellow-700 mb-1 flex items-center"><i class="fas fa-info-circle mr-2"></i>Perguntas p/ Entrevista</h4>
+                  <div id="perguntas" class="text-yellow-900 text-sm font-medium"></div>
+                </div>
+           </div>
+           <div class="mt-6 pt-4 border-t border-gray-200 text-center no-print">
+                <button id="btnAgendarEntrevista" onclick="agendarEntrevista()" class="bg-purple-600 text-white px-5 py-2 rounded-md shadow hover:bg-purple-700 disabled:opacity-50 transition duration-150">
+                    <i class="fas fa-calendar-check mr-1"></i> Agendar Entrevista
+                </button>
+                <div id="opcoesContato" class="mt-3" style="display: none;">
+                    <p class="text-sm text-gray-600 mb-2">Contactar <strong id="contatoNomeCandidato"></strong>:</p>
+                    <a id="linkWhatsapp" href="#" target="_blank" class="contact-button whatsapp-button">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                    <a id="linkChamada" href="#" class="contact-button call-button">
+                        <i class="fas fa-phone"></i> Ligar
+                    </a>
+                </div>
+           </div>
+        </div>
+      </div>
+    </div>
+     <div id="avaliacaoIAError" class="mt-6 p-4 bg-red-100 text-red-800 rounded-lg text-sm border border-red-200" style="display: none;"></div>
+  </section>
+
+  <section class="dashboard-section" id="historicoCandidatura">
+     <div id="historico-loading" class="loading-overlay"><div class="spinner"></div></div>
+    <div class="flex items-center mb-5">
+      <i class="fas fa-history text-gray-500 mr-3 fa-lg"></i>
+      <h2 class="text-lg font-semibold text-gray-800">Histórico de Avaliações</h2>
+    </div>
+    <div class="overflow-x-auto scrollbar-hide rounded-lg border border-gray-200">
+      <table class="w-full min-w-[600px] bg-white text-sm"> <thead class="sticky top-0 z-10 bg-gray-100"> <tr class="text-gray-600 uppercase text-xs tracking-wider">
+            <th class="p-3 font-semibold text-left">Candidato</th> <th class="p-3 font-semibold text-left">Vaga</th>
+            <th class="p-3 font-semibold text-center">Status</th> <th class="p-3 font-semibold text-center">Pontuação</th>
+            <th class="p-3 font-semibold text-left">Data</th>
+          </tr>
+        </thead>
+        <tbody id="historicoTable" class="divide-y divide-gray-200">
+             <tr><td colspan="5" class="p-4 text-center text-gray-500">Carregando histórico...</td></tr>
+        </tbody>
+      </table>
+    </div>
+     <p id="historicoEmpty" class="text-center text-gray-500 mt-4 py-4" style="display: none;">Nenhuma avaliação realizada ainda.</p>
+     <div id="historicoCandidaturaError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <section class="dashboard-section" id="metricasRelatorios">
+    <div class="flex items-center mb-5"> <i class="fas fa-chart-pie text-purple-500 mr-3 fa-lg"></i> <h2 class="text-lg font-semibold text-gray-800">Métricas & Relatórios</h2> </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Tempo Médio Contratação</span>
+          <span class="font-bold text-xl text-purple-700" id="tempoMedioVaga">-- dias</span>
+          <p class="text-xs text-gray-500 mt-1">(Placeholder)</p>
+      </div>
+      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Taxa de Sucesso IA</span>
+          <span class="font-bold text-xl text-purple-700" id="taxaSucesso">--%</span>
+           <p class="text-xs text-gray-500 mt-1">(Placeholder)</p>
+      </div>
+      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+          <span class="block text-xs font-semibold text-gray-600 mb-1">Entrevistas Agendadas</span>
+          <span class="font-bold text-xl text-purple-700" id="entrevistasAgendadas">0</span>
+           <p class="text-xs text-gray-500 mt-1">(Baseado no status)</p>
+      </div>
+    </div>
+    <div class="mt-6 bg-purple-100 rounded-lg p-4 text-purple-900 text-sm border border-purple-200"> <h3 class="font-semibold mb-1">Relatórios Futuros</h3> <p>Funcionalidades de relatórios customizáveis e exportação detalhada serão adicionadas em breve.</p> </div>
+     <div id="metricasRelatoriosError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <section class="dashboard-section" id="onboardingAjuda">
+     <div class="flex items-center mb-4"> <i class="fas fa-question-circle text-cyan-500 mr-3 fa-lg"></i> <h2 class="text-lg font-semibold text-gray-800">Como Usar</h2> </div>
+     <div class="bg-cyan-50 text-cyan-900 rounded-lg p-4 text-sm leading-relaxed border border-cyan-100">
+       <ol class="list-decimal ml-5 space-y-2">
+         <li>**Configure a IA:** Primeiro, vá para "Configurações da IA", escolha seu provedor preferido (Gemini, OpenAI, etc.) e insira sua chave de API pessoal. Salve as configurações.</li>
+         <li>**Cadastre:** Use as seções "Gerenciar Vagas" e "Gerenciar Candidatos" para adicionar ou editar informações.</li>
+         <li>**Avalie:** Na seção "Avaliação por IA", selecione um candidato e uma vaga. O botão indicará qual IA está configurada. Clique para analisar.</li>
+         <li>**Analise e Agende:** Veja a pontuação e detalhes. Se gostar, clique em "Agendar Entrevista" para ver opções de contato (WhatsApp/Ligar) e marcar o estado.</li>
+         <li>**Histórico:** Consulte todas as avaliações anteriores na seção "Histórico".</li>
+         <li>**Segurança:** Lembre-se do aviso sobre salvar a chave de API no navegador.</li>
+       </ol>
+     </div>
+     <div id="onboardingAjudaError" class="mt-4 text-red-600 text-sm" style="display: none;"></div> </section>
+
+  <footer class="text-center text-xs text-gray-500 mt-12 pb-8"> © 2024 AI Recruit Pro | Potencializado por Supabase & IA Configurável </footer>
+
+  <script src="js/ai-recruit-pro.js"></script>
+  <script>
+      
+ // --- Lógica da Navegação Responsiva (Mantida) ---
+ const menuButtonNav = document.getElementById('menu-button');
+        const closeSidebarButtonNav = document.getElementById('close-sidebar-button');
+        const sidebarNav = document.getElementById('sidebarNav');
+        const sidebarOverlayNav = document.getElementById('sidebarOverlay');
+        const iconHamburgerNav = document.getElementById('icon-hamburger');
+        const iconCloseNav = document.getElementById('icon-close');
+        function openSidebarNav() { if(sidebarNav) sidebarNav.classList.remove('-translate-x-full'); if(sidebarNav) sidebarNav.classList.add('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.add('hidden'); if(iconCloseNav) iconCloseNav.classList.remove('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'true'); }
+        function closeSidebarNav() { if(sidebarNav) sidebarNav.classList.add('-translate-x-full'); if(sidebarNav) sidebarNav.classList.remove('translate-x-0'); if(sidebarOverlayNav) sidebarOverlayNav.classList.add('hidden'); if(sidebarOverlayNav) sidebarOverlayNav.classList.remove('opacity-100'); if(iconHamburgerNav) iconHamburgerNav.classList.remove('hidden'); if(iconCloseNav) iconCloseNav.classList.add('hidden'); if(menuButtonNav) menuButtonNav.setAttribute('aria-expanded', 'false'); }
+        if (menuButtonNav) menuButtonNav.addEventListener('click', () => { if (sidebarNav.classList.contains('-translate-x-full')) openSidebarNav(); else closeSidebarNav(); });
+        if (closeSidebarButtonNav) closeSidebarButtonNav.addEventListener('click', closeSidebarNav);
+        if (sidebarOverlayNav) sidebarOverlayNav.addEventListener('click', closeSidebarNav);
+
+
+  </script>
+</body>
+</html>
