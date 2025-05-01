@@ -1,0 +1,22 @@
+/* Micro ajustes e refinamentos */
+input:focus, textarea:focus, select:focus {
+    outline: 2px solid #2563eb;
+    box-shadow: 0 0 0 2px #93c5fd66;
+    transition: box-shadow .2s;
+}
+
+section label, section h2 {
+    color: #2563eb;
+}
+
+#relatorioVisual ul li {
+    margin-bottom: .25em;
+    font-weight: 500;
+}
+
+#relatorioVisual {
+    background: #f0f9ff;
+    border-radius: 7px;
+    border: 1px solid #bae6fd;
+    padding: 1em 1.5em 1.5em 1.5em;
+}
