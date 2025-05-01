@@ -217,9 +217,14 @@
         let attendancePieChartInstance = null;
 
         // --- Funções Auxiliares (Mantidas) ---
-        function showLoading(isLoading) { /* ... implementação mantida ... */ }
-        function showCustomAlert(message, type = 'error') { /* ... implementação mantida ... */ }
-        function escapeHTML(str) { /* ... implementação mantida ... */ }
+        function showLoading(isLoading) { loadingSpinner.style.display = isLoading ? 'block' : 'none'; }
+        function showCustomAlert(message, type = 'error') { // Padrão para erro na dashboard
+            const existingAlert = document.getElementById('customAlert'); if (existingAlert) existingAlert.remove();
+            const alertBox = document.createElement('div'); alertBox.id = 'customAlert'; alertBox.className = type === 'error' ? 'alert-error' : 'alert-success';
+            const alertText = document.createElement('span'); alertText.textContent = message; const closeButton = document.createElement('button'); closeButton.innerHTML = '&times;'; closeButton.onclick = () => alertBox.remove();
+            alertBox.appendChild(alertText); alertBox.appendChild(closeButton); document.body.appendChild(alertBox); setTimeout(() => alertBox.remove(), 5000);
+        }
+        function escapeHTML(str) { if (str === null || str === undefined) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
         // --- Funções Principais (Modificadas para Tabelas T3) ---
 
@@ -245,7 +250,34 @@
             finally { showLoading(false); }
         }
 
-        function processAttendanceData(data) { /* ... implementação mantida ... */ }
+         /** Processa os dados de absenteísmo e atualiza o resumo/gráfico */
+        function processAttendanceData(data) {
+            const counts = { Presente: 0, 'Falta Justificada': 0, 'Falta Não Justificada': 0, Outros: 0 };
+            const otherStatus = ['Férias', 'Licença Médica', 'Home Office', 'Outro'];
+
+            data.forEach(record => {
+                if (record.status === 'Presente') {
+                    counts.Presente++;
+                } else if (record.status === 'Falta Justificada') {
+                    counts['Falta Justificada']++;
+                } else if (record.status === 'Falta Não Justificada') {
+                    counts['Falta Não Justificada']++;
+                } else if (otherStatus.includes(record.status)) {
+                    counts.Outros++;
+                }
+                // Ignora status não mapeados se houver
+            });
+
+            // Atualiza Cards
+            summaryPresentesEl.textContent = counts.Presente;
+            summaryFaltasJustifEl.textContent = counts['Falta Justificada'];
+            summaryFaltasNaoJustifEl.textContent = counts['Falta Não Justificada'];
+            summaryOutrosEl.textContent = counts.Outros;
+
+            // Atualiza Gráfico
+            renderAttendancePieChart(counts);
+        }
+    
         function processMachineData(data) {
              machineStatusTableBody.innerHTML = '';
              if (data.length === 0) { machineStatusTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum status (3º T) para esta data.</td></tr>'; return; }
@@ -260,7 +292,74 @@
                  `;
              });
         }
-        function renderAttendancePieChart(counts) { /* ... implementação mantida ... */ }
+         /** Renderiza ou atualiza o gráfico de pizza de absenteísmo */
+        function renderAttendancePieChart(counts) {
+            const ctx = attendanceChartCanvas.getContext('2d');
+            const labels = ['Presentes', 'Faltas Justif.', 'Faltas Não Justif.', 'Outros'];
+            const dataValues = [
+                counts.Presente,
+                counts['Falta Justificada'],
+                counts['Falta Não Justificada'],
+                counts.Outros
+            ];
+
+            // Cores para o gráfico de pizza
+            const backgroundColors = [
+                'rgba(75, 192, 192, 0.7)',  // Presente (Verde-azulado)
+                'rgba(255, 205, 86, 0.7)',  // Falta Justificada (Amarelo)
+                'rgba(255, 99, 132, 0.7)',   // Falta Não Justificada (Vermelho)
+                'rgba(153, 102, 255, 0.7)'  // Outros (Roxo)
+            ];
+            const borderColors = backgroundColors.map(color => color.replace('0.7', '1'));
+
+            // Destrói gráfico anterior
+            if (attendancePieChartInstance) {
+                attendancePieChartInstance.destroy();
+            }
+
+            // Cria novo gráfico
+            attendancePieChartInstance = new Chart(ctx, {
+                type: 'pie', // Tipo Pizza
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Distribuição de Status',
+                        data: dataValues,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom', // Posição da legenda
+                        },
+                        title: {
+                            display: true,
+                            text: 'Distribuição de Status de Funcionários no Dia',
+                            font: { size: 14 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
         function clearDashboard(showErrorMsg = false) { /* ... implementação mantida, ajustando colspan da tabela de máquinas */
             summaryPresentesEl.textContent = '0'; summaryFaltasJustifEl.textContent = '0';
             summaryFaltasNaoJustifEl.textContent = '0'; summaryOutrosEl.textContent = '0';
