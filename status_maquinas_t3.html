@@ -90,6 +90,90 @@
          #tabela th { background-color: #eee !important; color: #333 !important;}
          #tabela tbody tr { page-break-inside: avoid; }
      }
+
+.calc-btn {
+  background-color: lightslategray;
+  color: white;
+  padding: 10px;
+  font-size: 18px;
+  border-radius: 8px;
+font-weight:600;
+box-shadow: 0px 9px #000000A3 ;
+}
+
+#calc-display{
+ background-color:#000000;
+ font-weight: 600;
+ color:#fff ;
+ height :80px;
+ font-size:30px ;
+}
+
+#calc-equals{
+ background-color:green;
+ font-weight:600 ;
+ color:#fff ;
+ box-shadow: 0px 9px #000000A3 ;
+ border-radius:5px ;
+}
+
+
+.calc{
+Width:60px;
+height: 60px ;
+} 
+  </style>
+</head>
+<body class="bg-gray-100">
+
+
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-gray-800">Meu Sistema</span>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="index.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Dashboard</a>
+                        <a href="Absenteismo.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Absenteísmo</a>
+                        <a href="status.html" class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" aria-current="page">Status Máquinas</a>
+<a href="capydoc2.html"  class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">CapyDoc</a>
+<a href="analise-curriculo.html" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">Analise Curriculo</a>
+               
+
+</div>
+                </div>
+
+<!-- Botão do Cabeçalho (já deve existir) -->
+<button id="abrirCalculadora" class="text-white">
+  <img src="calc1.png" alt="Calculadora" class="calc" />
+</button>
+
+<!-- Modal da Calculadora -->
+<div id="modalCalculadora" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-xl p-4 w-80 shadow-lg relative">
+<input type="text" id="calc-display" class="w-full border rounded px-2 py-1 mb-2" readonly />
+    <div class="grid grid-cols-4 gap-2 mb-4">
+      <button class="calc-btn">7</button>
+      <button class="calc-btn">8</button>
+      <button class="calc-btn">9</button>
+      <button class="calc-btn">/</button>
+      <button class="calc-btn">4</button>
+      <button class="calc-btn">5</button>
+      <button class="calc-btn">6</button>
+      <button class="calc-btn">*</button>
+      <button class="calc-btn">1</button>
+      <button class="calc-btn">2</button>
+      <button class="calc-btn">3</button>
+      <button class="calc-btn">-</button>
+      <button class="calc-btn">0</button>
+      <button class="calc-btn">.</button>
+      <button id="calc-equals">=</button>
+      <button class="calc-btn">+</button>
+    </div>
+    
+    <button id="fecharCalculadora" class="bg-red-300 text-white px-3 py-1 rounded w-full">Fechar Calculadora</button>
+  </div>
+</div>
   </style>
 </head>
 <body class="bg-gray-100">
@@ -181,6 +265,36 @@
             <div id="imagemTabela" class="mt-4 flex justify-center"></div>
         </div>
     </div>
+
+<script>
+  const modal = document.getElementById('modalCalculadora');
+  const abrir = document.getElementById('abrirCalculadora');
+  const fechar = document.getElementById('fecharCalculadora');
+  const display = document.getElementById('calc-display');
+  const buttons = document.querySelectorAll('.calc-btn');
+
+  abrir.addEventListener('click', () => modal.classList.remove('hidden'));
+  fechar.addEventListener('click', () => modal.classList.add('hidden'));
+
+  let expression = '';
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      expression += btn.textContent;
+      display.value = expression;
+    });
+  });
+
+  document.getElementById('calc-equals').addEventListener('click', () => {
+    try {
+      display.value = eval(expression);
+      expression = '';
+    } catch (e) {
+      display.value = 'Erro';
+      expression = '';
+    }
+  });
+</script>
 
     <script>
         // --- Lógica da Navegação Responsiva (Mantida) ---
